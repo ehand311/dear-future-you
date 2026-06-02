@@ -6,6 +6,12 @@ export type ChildProfile = {
   tone: string;
 };
 
+export type ChildProfileFormState = {
+  name: string;
+  age: string;
+  tone: string;
+};
+
 export type Memory = {
   id: number;
   child: string;

@@ -1,7 +1,40 @@
-import { initialMemories } from '../data/mockMemories';
-import type { Memory } from '../types';
+import { children, initialMemories } from '../data/mockMemories';
+import type { ChildProfile, Memory } from '../types';
 
-const STORAGE_KEY = 'dear-future-you.memories';
+const CHILDREN_STORAGE_KEY = 'dear-future-you.children';
+const MEMORY_STORAGE_KEY = 'dear-future-you.memories';
+
+export function loadStoredChildren() {
+  if (typeof window === 'undefined') {
+    return children;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(CHILDREN_STORAGE_KEY);
+
+    if (!stored) {
+      return children;
+    }
+
+    const parsed = JSON.parse(stored);
+
+    if (!Array.isArray(parsed) || !parsed.every(isChildProfile)) {
+      return children;
+    }
+
+    return parsed;
+  } catch {
+    return children;
+  }
+}
+
+export function saveStoredChildren(childProfiles: ChildProfile[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(CHILDREN_STORAGE_KEY, JSON.stringify(childProfiles));
+}
 
 export function loadStoredMemories() {
   if (typeof window === 'undefined') {
@@ -9,7 +42,7 @@ export function loadStoredMemories() {
   }
 
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const stored = window.localStorage.getItem(MEMORY_STORAGE_KEY);
 
     if (!stored) {
       return initialMemories;
@@ -32,7 +65,17 @@ export function saveStoredMemories(memories: Memory[]) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(memories));
+  window.localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(memories));
+}
+
+function isChildProfile(value: unknown): value is ChildProfile {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const child = value as Partial<ChildProfile>;
+
+  return typeof child.name === 'string' && typeof child.age === 'string' && typeof child.tone === 'string';
 }
 
 function isMemory(value: unknown): value is Memory {
