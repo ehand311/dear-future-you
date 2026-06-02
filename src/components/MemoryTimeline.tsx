@@ -3,6 +3,7 @@ import type { ChildProfile, Memory } from '../types';
 import { MemoryCard } from './MemoryCard';
 
 type MemoryTimelineProps = {
+  hasAnyMemories: boolean;
   memories: Memory[];
   onAddMemory: () => void;
   onSelectMemory: (memory: Memory) => void;
@@ -10,7 +11,14 @@ type MemoryTimelineProps = {
   selectedChild?: ChildProfile;
 };
 
-export function MemoryTimeline({ memories, onAddMemory, onSelectMemory, searchQuery, selectedChild }: MemoryTimelineProps) {
+export function MemoryTimeline({ hasAnyMemories, memories, onAddMemory, onSelectMemory, searchQuery, selectedChild }: MemoryTimelineProps) {
+  const emptyTitle = searchQuery ? 'No matches found' : selectedChild ? `No memories for ${selectedChild.name} yet` : 'No memories yet';
+  const emptyBody = searchQuery
+    ? 'Try a different word or clear search to see everything again.'
+    : selectedChild
+      ? 'Add the first little moment, quote, or milestone for this timeline.'
+      : 'Start with one small moment. The monthly letter gets better as these add up.';
+
   return (
     <section className="mt-6 flex-1 rounded-t-[2rem] bg-slate-50 px-5 py-5">
       <div className="flex items-center justify-between">
@@ -29,11 +37,13 @@ export function MemoryTimeline({ memories, onAddMemory, onSelectMemory, searchQu
         ))}
         {memories.length === 0 && (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-center">
-            <p className="text-sm font-semibold">No memories found</p>
-            <p className="mt-1 text-sm text-slate-500">Try a different search or add a new moment.</p>
-            <button className="mt-4 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white" onClick={onAddMemory}>
-              Add memory
-            </button>
+            <p className="text-sm font-semibold">{emptyTitle}</p>
+            <p className="mt-1 text-sm text-slate-500">{emptyBody}</p>
+            {(!searchQuery || !hasAnyMemories) && (
+              <button className="mt-4 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white" onClick={onAddMemory}>
+                Add memory
+              </button>
+            )}
           </div>
         )}
       </div>

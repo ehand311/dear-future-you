@@ -1,4 +1,5 @@
-import { X } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
+import { useState } from 'react';
 import type { GeneratedLetter } from '../types';
 
 type LetterSheetProps = {
@@ -7,9 +8,19 @@ type LetterSheetProps = {
 };
 
 export function LetterSheet({ letter, onClose }: LetterSheetProps) {
+  const [hasCopied, setHasCopied] = useState(false);
+
+  async function copyLetter() {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(letter.body);
+    }
+
+    setHasCopied(true);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 px-0 sm:px-4" role="dialog" aria-modal="true" aria-label="Monthly letter">
-      <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-[#fffdf8] p-5 shadow-2xl shadow-slate-950/30 sm:mb-4 sm:rounded-[2rem]">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-[#fffdf8] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl shadow-slate-950/30 sm:mb-4 sm:rounded-[2rem]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-slate-500">Generated keepsake</p>
@@ -19,6 +30,11 @@ export function LetterSheet({ letter, onClose }: LetterSheetProps) {
             <X size={19} />
           </button>
         </div>
+
+        <button className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white" onClick={copyLetter}>
+          {hasCopied ? <Check size={17} /> : <Copy size={17} />}
+          {hasCopied ? 'Copied letter' : 'Copy letter'}
+        </button>
 
         <article className="mt-5 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/70">
           {letter.body.split('\n\n').map((paragraph) => (

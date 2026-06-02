@@ -15,7 +15,7 @@ type AddMemorySheetProps = {
 export function AddMemorySheet({ children, form, isEditing = false, memoryTypes, onClose, onDelete, onSave, onUpdateForm }: AddMemorySheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 px-0 sm:px-4" role="dialog" aria-modal="true" aria-label={isEditing ? 'Edit memory' : 'Add memory'}>
-      <div className="w-full max-w-md rounded-t-[2rem] bg-[#fffdf8] p-5 shadow-2xl shadow-slate-950/30 sm:mb-4 sm:rounded-[2rem]">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[2rem] bg-[#fffdf8] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl shadow-slate-950/30 sm:mb-4 sm:rounded-[2rem]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-slate-500">Quick capture</p>

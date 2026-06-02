@@ -266,7 +266,14 @@ export default function AppShell() {
           onSelectChild={openChildTimeline}
           onToggleManageChildren={() => setIsManagingChildren((current) => !current)}
         />
-        <MemoryTimeline memories={visibleMemories} onAddMemory={() => openSheet('Memory', activeChild ?? form.child)} onSelectMemory={openEditMemorySheet} searchQuery={searchQuery} selectedChild={selectedChild} />
+        <MemoryTimeline
+          hasAnyMemories={memories.length > 0}
+          memories={visibleMemories}
+          onAddMemory={() => openSheet('Memory', activeChild ?? form.child)}
+          onSelectMemory={openEditMemorySheet}
+          searchQuery={searchQuery}
+          selectedChild={selectedChild}
+        />
       </div>
 
       {isSheetOpen && (
