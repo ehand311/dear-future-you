@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { childAccent, children, initialMemories, memoryTypes } from '../data/mockMemories';
 import { quickActions } from '../data/quickActions';
+import { loadStoredMemories, saveStoredMemories } from '../lib/memoryStorage';
 import type { Memory, MemoryFormState } from '../types';
 import { AddMemorySheet } from './AddMemorySheet';
 import { AppHeader } from './AppHeader';
@@ -13,6 +14,7 @@ export default function AppShell() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [activeChild, setActiveChild] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [hasRestoredMemories, setHasRestoredMemories] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [form, setForm] = useState<MemoryFormState>({
     child: children[0].name,
@@ -20,6 +22,19 @@ export default function AppShell() {
     body: '',
     tags: '',
   });
+
+  useEffect(() => {
+    setMemories(loadStoredMemories());
+    setHasRestoredMemories(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredMemories) {
+      return;
+    }
+
+    saveStoredMemories(memories);
+  }, [hasRestoredMemories, memories]);
 
   const savedThisMonth = useMemo(() => 15 + memories.length, [memories.length]);
   const selectedChild = children.find((child) => child.name === activeChild);
