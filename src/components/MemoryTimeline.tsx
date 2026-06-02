@@ -5,11 +5,12 @@ import { MemoryCard } from './MemoryCard';
 type MemoryTimelineProps = {
   memories: Memory[];
   onAddMemory: () => void;
+  onSelectMemory: (memory: Memory) => void;
   searchQuery: string;
   selectedChild?: ChildProfile;
 };
 
-export function MemoryTimeline({ memories, onAddMemory, searchQuery, selectedChild }: MemoryTimelineProps) {
+export function MemoryTimeline({ memories, onAddMemory, onSelectMemory, searchQuery, selectedChild }: MemoryTimelineProps) {
   return (
     <section className="mt-6 flex-1 rounded-t-[2rem] bg-slate-50 px-5 py-5">
       <div className="flex items-center justify-between">
@@ -24,7 +25,7 @@ export function MemoryTimeline({ memories, onAddMemory, searchQuery, selectedChi
 
       <div className="mt-4 space-y-3">
         {memories.map((memory) => (
-          <MemoryCard key={memory.id} memory={memory} />
+          <MemoryCard key={memory.id} memory={memory} onSelectMemory={onSelectMemory} />
         ))}
         {memories.length === 0 && (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-center">

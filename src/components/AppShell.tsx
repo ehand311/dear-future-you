@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { childAccent, children as initialChildren, initialMemories, memoryTypes } from '../data/mockMemories';
 import { quickActions } from '../data/quickActions';
+import { generateMonthlyLetter } from '../lib/letterGenerator';
 import { loadStoredChildren, loadStoredMemories, saveStoredChildren, saveStoredMemories } from '../lib/memoryStorage';
-import type { ChildProfile, ChildProfileFormState, Memory, MemoryFormState } from '../types';
+import type { ChildProfile, ChildProfileFormState, GeneratedLetter, Memory, MemoryFormState } from '../types';
 import { AddMemorySheet } from './AddMemorySheet';
 import { AppHeader } from './AppHeader';
 import { ChildProfileSheet } from './ChildProfileSheet';
 import { CaptureSection } from './CaptureSection';
 import { ChildrenStrip } from './ChildrenStrip';
+import { LetterSheet } from './LetterSheet';
 import { MemoryTimeline } from './MemoryTimeline';
 
 export default function AppShell() {
@@ -15,7 +17,9 @@ export default function AppShell() {
   const [memories, setMemories] = useState(initialMemories);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isChildSheetOpen, setIsChildSheetOpen] = useState(false);
+  const [generatedLetter, setGeneratedLetter] = useState<GeneratedLetter | null>(null);
   const [isManagingChildren, setIsManagingChildren] = useState(false);
+  const [editingMemoryId, setEditingMemoryId] = useState<number | null>(null);
   const [activeChild, setActiveChild] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hasRestoredData, setHasRestoredData] = useState(false);
@@ -70,12 +74,14 @@ export default function AppShell() {
   }, [activeChild, memories]);
 
   function openSheet(type = 'Memory', child = activeChild ?? form.child) {
+    setEditingMemoryId(null);
     setForm((current) => ({ ...current, child, type }));
     setIsSheetOpen(true);
   }
 
   function closeSheet() {
     setIsSheetOpen(false);
+    setEditingMemoryId(null);
   }
 
   function updateForm(field: keyof MemoryFormState, value: string) {
@@ -91,6 +97,26 @@ export default function AppShell() {
       return;
     }
 
+    if (editingMemoryId) {
+      setMemories((current) =>
+        current.map((memory) =>
+          memory.id === editingMemoryId
+            ? {
+                ...memory,
+                child: form.child,
+                type: form.type,
+                body: form.body.trim(),
+                accent: getChildAccent(form.child, childProfiles),
+              }
+            : memory,
+        ),
+      );
+      setForm((current) => ({ ...current, body: '', tags: '' }));
+      setEditingMemoryId(null);
+      setIsSheetOpen(false);
+      return;
+    }
+
     setMemories((current) => [
       {
         id: Date.now(),
@@ -103,6 +129,28 @@ export default function AppShell() {
       ...current,
     ]);
     setForm((current) => ({ ...current, body: '', tags: '' }));
+    setIsSheetOpen(false);
+  }
+
+  function openEditMemorySheet(memory: Memory) {
+    setEditingMemoryId(memory.id);
+    setForm({
+      child: memory.child,
+      type: memory.type,
+      body: memory.body,
+      tags: '',
+    });
+    setIsSheetOpen(true);
+  }
+
+  function deleteMemory() {
+    if (!editingMemoryId) {
+      return;
+    }
+
+    setMemories((current) => current.filter((memory) => memory.id !== editingMemoryId));
+    setForm((current) => ({ ...current, body: '', tags: '' }));
+    setEditingMemoryId(null);
     setIsSheetOpen(false);
   }
 
@@ -183,10 +231,23 @@ export default function AppShell() {
     setIsManagingChildren(false);
   }
 
+  function openMonthlyLetter() {
+    const letterMemories = activeChild ? memories.filter((memory) => memory.child === activeChild) : memories;
+
+    setGeneratedLetter(generateMonthlyLetter(letterMemories, selectedChild));
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f4ef] text-slate-950">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#fffdf8] shadow-2xl shadow-slate-200/70">
-        <AppHeader childMemoryCount={childMemoryCount} onAddMemory={() => openSheet('Memory', activeChild ?? form.child)} onBack={returnHome} savedThisMonth={savedThisMonth} selectedChild={selectedChild} />
+        <AppHeader
+          childMemoryCount={childMemoryCount}
+          onAddMemory={() => openSheet('Memory', activeChild ?? form.child)}
+          onBack={returnHome}
+          onGenerateLetter={openMonthlyLetter}
+          savedThisMonth={savedThisMonth}
+          selectedChild={selectedChild}
+        />
         <CaptureSection
           actions={quickActions}
           isSearchOpen={isSearchOpen}
@@ -205,10 +266,21 @@ export default function AppShell() {
           onSelectChild={openChildTimeline}
           onToggleManageChildren={() => setIsManagingChildren((current) => !current)}
         />
-        <MemoryTimeline memories={visibleMemories} onAddMemory={() => openSheet('Memory', activeChild ?? form.child)} searchQuery={searchQuery} selectedChild={selectedChild} />
+        <MemoryTimeline memories={visibleMemories} onAddMemory={() => openSheet('Memory', activeChild ?? form.child)} onSelectMemory={openEditMemorySheet} searchQuery={searchQuery} selectedChild={selectedChild} />
       </div>
 
-      {isSheetOpen && <AddMemorySheet children={childProfiles} form={form} memoryTypes={memoryTypes} onClose={closeSheet} onSave={saveMemory} onUpdateForm={updateForm} />}
+      {isSheetOpen && (
+        <AddMemorySheet
+          children={childProfiles}
+          form={form}
+          isEditing={Boolean(editingMemoryId)}
+          memoryTypes={memoryTypes}
+          onClose={closeSheet}
+          onDelete={editingMemoryId ? deleteMemory : undefined}
+          onSave={saveMemory}
+          onUpdateForm={updateForm}
+        />
+      )}
       {isChildSheetOpen && (
         <ChildProfileSheet
           editingChildName={editingChildName}
@@ -219,6 +291,7 @@ export default function AppShell() {
           onUpdateForm={updateChildForm}
         />
       )}
+      {generatedLetter && <LetterSheet letter={generatedLetter} onClose={() => setGeneratedLetter(null)} />}
     </main>
   );
 }

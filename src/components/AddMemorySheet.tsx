@@ -4,20 +4,22 @@ import type { ChildProfile, MemoryFormState } from '../types';
 type AddMemorySheetProps = {
   children: ChildProfile[];
   form: MemoryFormState;
+  isEditing?: boolean;
   memoryTypes: string[];
   onClose: () => void;
+  onDelete?: () => void;
   onSave: () => void;
   onUpdateForm: (field: keyof MemoryFormState, value: string) => void;
 };
 
-export function AddMemorySheet({ children, form, memoryTypes, onClose, onSave, onUpdateForm }: AddMemorySheetProps) {
+export function AddMemorySheet({ children, form, isEditing = false, memoryTypes, onClose, onDelete, onSave, onUpdateForm }: AddMemorySheetProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 px-0 sm:px-4" role="dialog" aria-modal="true" aria-label="Add memory">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 px-0 sm:px-4" role="dialog" aria-modal="true" aria-label={isEditing ? 'Edit memory' : 'Add memory'}>
       <div className="w-full max-w-md rounded-t-[2rem] bg-[#fffdf8] p-5 shadow-2xl shadow-slate-950/30 sm:mb-4 sm:rounded-[2rem]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-slate-500">Quick capture</p>
-            <h2 className="mt-1 text-xl font-semibold">Add a memory</h2>
+            <h2 className="mt-1 text-xl font-semibold">{isEditing ? 'Edit memory' : 'Add a memory'}</h2>
           </div>
           <button className="grid size-10 place-items-center rounded-full bg-slate-100 text-slate-700" onClick={onClose} aria-label="Close" title="Close">
             <X size={19} />
@@ -75,14 +77,21 @@ export function AddMemorySheet({ children, form, memoryTypes, onClose, onSave, o
             />
           </label>
 
-          <button
-            className="flex h-13 w-full items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            type="button"
-            onPointerDown={onSave}
-            disabled={!form.body.trim()}
-          >
-            Save memory
-          </button>
+          <div className="flex gap-3">
+            {isEditing && onDelete && (
+              <button className="h-13 flex-1 rounded-2xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700" type="button" onClick={onDelete}>
+                Delete
+              </button>
+            )}
+            <button
+              className="h-13 flex-[2] rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              type="button"
+              onClick={onSave}
+              disabled={!form.body.trim()}
+            >
+              Save memory
+            </button>
+          </div>
         </div>
       </div>
     </div>

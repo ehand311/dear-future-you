@@ -21,6 +21,12 @@ export type Memory = {
   accent: string;
 };
 
+export type GeneratedLetter = {
+  title: string;
+  body: string;
+  sourceMemories: Memory[];
+};
+
 export type MemoryFormState = {
   child: string;
   type: string;

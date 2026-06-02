@@ -5,11 +5,12 @@ type AppHeaderProps = {
   childMemoryCount: number;
   onAddMemory: () => void;
   onBack: () => void;
+  onGenerateLetter: () => void;
   savedThisMonth: number;
   selectedChild?: ChildProfile;
 };
 
-export function AppHeader({ childMemoryCount, onAddMemory, onBack, savedThisMonth, selectedChild }: AppHeaderProps) {
+export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLetter, savedThisMonth, selectedChild }: AppHeaderProps) {
   return (
     <header className="px-5 pb-4 pt-5">
       <div className="flex items-center justify-between">
@@ -44,7 +45,7 @@ export function AppHeader({ childMemoryCount, onAddMemory, onBack, savedThisMont
           </div>
           <Heart className="mt-1 text-rose-300" size={26} />
         </div>
-        <button className="mt-5 flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left text-slate-950">
+        <button className="mt-5 flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left text-slate-950" onClick={onGenerateLetter}>
           <span className="flex items-center gap-3 text-sm font-semibold">
             <Sparkles size={18} className="text-violet-600" />
             Generate June letter
