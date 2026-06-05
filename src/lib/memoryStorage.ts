@@ -86,7 +86,7 @@ function isMemory(value: unknown): value is Memory {
   const memory = value as Partial<Memory>;
 
   return (
-    typeof memory.id === 'number' &&
+    typeof memory.id === 'string' &&
     typeof memory.child === 'string' &&
     typeof memory.type === 'string' &&
     typeof memory.date === 'string' &&

@@ -6,11 +6,13 @@ type AppHeaderProps = {
   onAddMemory: () => void;
   onBack: () => void;
   onGenerateLetter: () => void;
+  onSignOut?: () => void;
   savedThisMonth: number;
   selectedChild?: ChildProfile;
+  userEmail?: string;
 };
 
-export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLetter, savedThisMonth, selectedChild }: AppHeaderProps) {
+export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLetter, onSignOut, savedThisMonth, selectedChild, userEmail }: AppHeaderProps) {
   return (
     <header className="px-5 pb-4 pt-5">
       <div className="flex items-center justify-between">
@@ -34,6 +36,14 @@ export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLet
           <Plus size={22} />
         </button>
       </div>
+      {userEmail && onSignOut && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-100 px-4 py-3">
+          <p className="truncate text-xs font-medium text-slate-500">{userEmail}</p>
+          <button className="text-xs font-semibold text-slate-700" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+      )}
 
       <section className="mt-5 rounded-[2rem] bg-slate-950 p-5 text-white">
         <div className="flex items-start justify-between gap-4">

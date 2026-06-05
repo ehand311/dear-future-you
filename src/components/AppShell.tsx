@@ -1,11 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { childAccent, children as initialChildren, initialMemories, memoryTypes } from '../data/mockMemories';
 import { quickActions } from '../data/quickActions';
 import { generateMonthlyLetter } from '../lib/letterGenerator';
 import { loadStoredChildren, loadStoredMemories, saveStoredChildren, saveStoredMemories } from '../lib/memoryStorage';
+import {
+  createChild,
+  createMemory,
+  deleteChild,
+  deleteMemoryById,
+  getCurrentUser,
+  loadUserData,
+  signInWithPassword,
+  signOut,
+  signUpWithPassword,
+  updateChild,
+  updateMemoriesForChild,
+  updateMemory,
+} from '../lib/supabaseRepository';
 import type { ChildProfile, ChildProfileFormState, GeneratedLetter, Memory, MemoryFormState } from '../types';
 import { AddMemorySheet } from './AddMemorySheet';
 import { AppHeader } from './AppHeader';
+import { AuthPanel } from './AuthPanel';
 import { ChildProfileSheet } from './ChildProfileSheet';
 import { CaptureSection } from './CaptureSection';
 import { ChildrenStrip } from './ChildrenStrip';
@@ -13,8 +29,12 @@ import { LetterSheet } from './LetterSheet';
 import { MemoryTimeline } from './MemoryTimeline';
 
 export default function AppShell() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [childProfiles, setChildProfiles] = useState(initialChildren);
   const [memories, setMemories] = useState(initialMemories);
+  const [authError, setAuthError] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isChildSheetOpen, setIsChildSheetOpen] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState<GeneratedLetter | null>(null);
@@ -38,12 +58,25 @@ export default function AppShell() {
   });
 
   useEffect(() => {
-    const storedChildren = loadStoredChildren();
+    async function restoreData() {
+      const user = await getCurrentUser();
 
-    setChildProfiles(storedChildren);
-    setMemories(loadStoredMemories());
-    setForm((current) => ({ ...current, child: storedChildren[0]?.name ?? '' }));
-    setHasRestoredData(true);
+      if (user) {
+        setCurrentUser(user);
+        await loadRemoteData(user);
+        return;
+      }
+
+      const storedChildren = loadStoredChildren();
+
+      setChildProfiles(storedChildren);
+      setMemories(loadStoredMemories());
+      setForm((current) => ({ ...current, child: storedChildren[0]?.name ?? '' }));
+      setHasRestoredData(true);
+      setIsDataLoading(false);
+    }
+
+    void restoreData();
   }, []);
 
   useEffect(() => {
@@ -51,18 +84,22 @@ export default function AppShell() {
       return;
     }
 
-    saveStoredMemories(memories);
-  }, [hasRestoredData, memories]);
+    if (!currentUser) {
+      saveStoredMemories(memories);
+    }
+  }, [currentUser, hasRestoredData, memories]);
 
   useEffect(() => {
     if (!hasRestoredData) {
       return;
     }
 
-    saveStoredChildren(childProfiles);
-  }, [childProfiles, hasRestoredData]);
+    if (!currentUser) {
+      saveStoredChildren(childProfiles);
+    }
+  }, [childProfiles, currentUser, hasRestoredData]);
 
-  const savedThisMonth = useMemo(() => 15 + memories.length, [memories.length]);
+  const savedThisMonth = useMemo(() => memories.length, [memories.length]);
   const selectedChild = childProfiles.find((child) => child.name === activeChild);
   const visibleMemories = useMemo(() => filterMemories(memories, activeChild, searchQuery), [activeChild, memories, searchQuery]);
   const childMemoryCount = useMemo(() => {
@@ -74,6 +111,11 @@ export default function AppShell() {
   }, [activeChild, memories]);
 
   function openSheet(type = 'Memory', child = activeChild ?? form.child) {
+    if (childProfiles.length === 0) {
+      openAddChildSheet();
+      return;
+    }
+
     setEditingMemoryId(null);
     setForm((current) => ({ ...current, child, type }));
     setIsSheetOpen(true);
@@ -92,42 +134,41 @@ export default function AppShell() {
     setChildForm((current) => ({ ...current, [field]: value }));
   }
 
-  function saveMemory() {
+  async function saveMemory() {
     if (!form.body.trim()) {
       return;
     }
 
     if (editingMemoryId) {
-      setMemories((current) =>
-        current.map((memory) =>
-          memory.id === editingMemoryId
-            ? {
-                ...memory,
-                child: form.child,
-                type: form.type,
-                body: form.body.trim(),
-                accent: getChildAccent(form.child, childProfiles),
-              }
-            : memory,
-        ),
-      );
+      const nextMemory = {
+        id: editingMemoryId,
+        child: form.child,
+        type: form.type,
+        date: memories.find((memory) => memory.id === editingMemoryId)?.date ?? 'Today',
+        body: form.body.trim(),
+        accent: getChildAccent(form.child, childProfiles),
+      };
+      const child = childProfiles.find((profile) => profile.name === form.child);
+      const savedMemory = currentUser ? await updateMemory(nextMemory, child) : nextMemory;
+
+      setMemories((current) => current.map((memory) => (memory.id === editingMemoryId ? savedMemory : memory)));
       setForm((current) => ({ ...current, body: '', tags: '' }));
       setEditingMemoryId(null);
       setIsSheetOpen(false);
       return;
     }
 
-    setMemories((current) => [
-      {
-        id: Date.now(),
-        child: form.child,
-        type: form.type,
-        date: 'Just now',
-        body: form.body.trim(),
-        accent: getChildAccent(form.child, childProfiles),
-      },
-      ...current,
-    ]);
+    const nextMemory = {
+      child: form.child,
+      type: form.type,
+      date: 'Just now',
+      body: form.body.trim(),
+      accent: getChildAccent(form.child, childProfiles),
+    };
+    const child = childProfiles.find((profile) => profile.name === form.child);
+    const savedMemory = currentUser ? await createMemory(currentUser, nextMemory, child) : { id: Date.now().toString(), ...nextMemory };
+
+    setMemories((current) => [savedMemory, ...current]);
     setForm((current) => ({ ...current, body: '', tags: '' }));
     setIsSheetOpen(false);
   }
@@ -143,9 +184,13 @@ export default function AppShell() {
     setIsSheetOpen(true);
   }
 
-  function deleteMemory() {
+  async function deleteMemory() {
     if (!editingMemoryId) {
       return;
+    }
+
+    if (currentUser) {
+      await deleteMemoryById(editingMemoryId);
     }
 
     setMemories((current) => current.filter((memory) => memory.id !== editingMemoryId));
@@ -182,7 +227,7 @@ export default function AppShell() {
     setIsChildSheetOpen(false);
   }
 
-  function saveChildProfile() {
+  async function saveChildProfile() {
     const nextName = childForm.name.trim();
 
     if (!nextName) {
@@ -190,34 +235,50 @@ export default function AppShell() {
     }
 
     const nextChild = {
+      id: childProfiles.find((child) => child.name === editingChildName)?.id,
       name: nextName,
       age: childForm.age.trim() || 'Age not set',
       tone: childForm.tone,
     };
 
     if (!editingChildName) {
-      setChildProfiles((current) => [...current, nextChild]);
-      setForm((current) => ({ ...current, child: nextChild.name }));
+      const savedChild = currentUser ? await createChild(currentUser, nextChild) : nextChild;
+
+      setChildProfiles((current) => [...current, savedChild]);
+      setForm((current) => ({ ...current, child: savedChild.name }));
       setIsChildSheetOpen(false);
       setIsManagingChildren(false);
       return;
     }
 
-    setChildProfiles((current) => current.map((child) => (child.name === editingChildName ? nextChild : child)));
-    setMemories((current) => current.map((memory) => (memory.child === editingChildName ? { ...memory, child: nextChild.name, accent: getChildAccent(nextChild.name, [nextChild]) } : memory)));
+    const savedChild = currentUser ? await updateChild(nextChild) : nextChild;
+    const savedChildAccent = getChildAccent(savedChild.name, [savedChild]);
 
-    if (activeChild === editingChildName) {
-      setActiveChild(nextChild.name);
+    if (currentUser) {
+      await updateMemoriesForChild(savedChild, savedChildAccent);
     }
 
-    setForm((current) => ({ ...current, child: current.child === editingChildName ? nextChild.name : current.child }));
+    setChildProfiles((current) => current.map((child) => (child.name === editingChildName ? savedChild : child)));
+    setMemories((current) => current.map((memory) => (memory.child === editingChildName ? { ...memory, child: savedChild.name, accent: savedChildAccent } : memory)));
+
+    if (activeChild === editingChildName) {
+      setActiveChild(savedChild.name);
+    }
+
+    setForm((current) => ({ ...current, child: current.child === editingChildName ? savedChild.name : current.child }));
     setIsChildSheetOpen(false);
     setIsManagingChildren(false);
   }
 
-  function deleteChildProfile() {
+  async function deleteChildProfile() {
     if (!editingChildName || childProfiles.length <= 1) {
       return;
+    }
+
+    const childToDelete = childProfiles.find((child) => child.name === editingChildName);
+
+    if (currentUser && childToDelete) {
+      await deleteChild(childToDelete);
     }
 
     const remainingChildren = childProfiles.filter((child) => child.name !== editingChildName);
@@ -237,6 +298,85 @@ export default function AppShell() {
     setGeneratedLetter(generateMonthlyLetter(letterMemories, selectedChild));
   }
 
+  async function loadRemoteData(user: User) {
+    setIsDataLoading(true);
+    setAuthError('');
+
+    try {
+      const remoteData = await loadUserData(user);
+
+      setChildProfiles(remoteData.children);
+      setMemories(remoteData.memories);
+      setForm((current) => ({ ...current, child: remoteData.children[0]?.name ?? '' }));
+      setHasRestoredData(true);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Could not load Supabase data.');
+    } finally {
+      setIsDataLoading(false);
+    }
+  }
+
+  async function handleSignIn(email: string, password: string) {
+    setIsAuthLoading(true);
+    setAuthError('');
+
+    try {
+      await signInWithPassword(email, password);
+      const user = await getCurrentUser();
+
+      setCurrentUser(user);
+
+      if (user) {
+        await loadRemoteData(user);
+      }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Could not sign in.');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function handleSignUp(email: string, password: string) {
+    setIsAuthLoading(true);
+    setAuthError('');
+
+    try {
+      await signUpWithPassword(email, password);
+      const user = await getCurrentUser();
+
+      if (!user) {
+        setAuthError('Check your email to confirm your account, then sign in.');
+        return;
+      }
+
+      setCurrentUser(user);
+      await loadRemoteData(user);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Could not sign up.');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOut();
+    setCurrentUser(null);
+    setChildProfiles(loadStoredChildren());
+    setMemories(loadStoredMemories());
+  }
+
+  if (isDataLoading) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f7f4ef] px-5 text-slate-950">
+        <p className="text-sm font-semibold text-slate-500">Loading your family vault...</p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return <AuthPanel errorMessage={authError} isLoading={isAuthLoading} onSignIn={handleSignIn} onSignUp={handleSignUp} />;
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f4ef] text-slate-950">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#fffdf8] shadow-2xl shadow-slate-200/70">
@@ -245,8 +385,10 @@ export default function AppShell() {
           onAddMemory={() => openSheet('Memory', activeChild ?? form.child)}
           onBack={returnHome}
           onGenerateLetter={openMonthlyLetter}
+          onSignOut={handleSignOut}
           savedThisMonth={savedThisMonth}
           selectedChild={selectedChild}
+          userEmail={currentUser.email}
         />
         <CaptureSection
           actions={quickActions}

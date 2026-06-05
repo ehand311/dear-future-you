@@ -12,12 +12,14 @@ type ChildrenStripProps = {
 };
 
 export function ChildrenStrip({ activeChild, children, isManagingChildren, onAddChild, onEditChild, onSelectChild, onToggleManageChildren }: ChildrenStripProps) {
+  const canAddChild = isManagingChildren || children.length === 0;
+
   return (
     <section className="mt-6 px-5">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Children</h2>
-        <button className="text-sm font-semibold text-slate-500" onClick={onToggleManageChildren}>
-          {isManagingChildren ? 'Done' : 'Edit'}
+        <button className="text-sm font-semibold text-slate-500" onClick={children.length === 0 ? onAddChild : onToggleManageChildren}>
+          {children.length === 0 ? 'Add' : isManagingChildren ? 'Done' : 'Edit'}
         </button>
       </div>
       <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
@@ -39,7 +41,7 @@ export function ChildrenStrip({ activeChild, children, isManagingChildren, onAdd
             </span>
           </button>
         ))}
-        {isManagingChildren && (
+        {canAddChild && (
           <button className="flex min-w-32 items-center gap-3 rounded-3xl border border-dashed border-slate-300 bg-white p-3 text-left shadow-sm shadow-slate-200/70" onClick={onAddChild}>
             <span className="grid size-10 place-items-center rounded-2xl bg-slate-100 text-slate-700">
               <Plus size={18} />

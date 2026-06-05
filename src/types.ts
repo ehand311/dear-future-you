@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 
 export type ChildProfile = {
+  id?: string;
   name: string;
   age: string;
   tone: string;
@@ -13,7 +14,7 @@ export type ChildProfileFormState = {
 };
 
 export type Memory = {
-  id: number;
+  id: string;
   child: string;
   type: string;
   date: string;

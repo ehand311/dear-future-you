@@ -8,7 +8,7 @@ export const children: ChildProfile[] = [
 
 export const initialMemories: Memory[] = [
   {
-    id: 1,
+    id: '1',
     child: 'Ellie',
     type: 'Funny quote',
     date: 'Today',
@@ -16,7 +16,7 @@ export const initialMemories: Memory[] = [
     accent: 'border-rose-200',
   },
   {
-    id: 2,
+    id: '2',
     child: 'Miles',
     type: 'Milestone',
     date: 'Yesterday',
@@ -24,7 +24,7 @@ export const initialMemories: Memory[] = [
     accent: 'border-cyan-200',
   },
   {
-    id: 3,
+    id: '3',
     child: 'Family',
     type: 'Sweet moment',
     date: 'May 28',
