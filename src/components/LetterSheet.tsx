@@ -1,14 +1,17 @@
 import { Check, Copy, X } from 'lucide-react';
 import { useState } from 'react';
-import type { GeneratedLetter } from '../types';
+import type { GeneratedLetter, SavedLetter } from '../types';
 
 type LetterSheetProps = {
-  letter: GeneratedLetter;
+  isSaved?: boolean;
+  letter: GeneratedLetter | SavedLetter;
   onClose: () => void;
+  onSave?: () => void;
 };
 
-export function LetterSheet({ letter, onClose }: LetterSheetProps) {
+export function LetterSheet({ isSaved = false, letter, onClose, onSave }: LetterSheetProps) {
   const [hasCopied, setHasCopied] = useState(false);
+  const sourceMemoryCount = 'sourceMemoryIds' in letter ? letter.sourceMemoryIds.length : 0;
 
   async function copyLetter() {
     if (navigator.clipboard) {
@@ -31,10 +34,19 @@ export function LetterSheet({ letter, onClose }: LetterSheetProps) {
           </button>
         </div>
 
-        <button className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white" onClick={copyLetter}>
-          {hasCopied ? <Check size={17} /> : <Copy size={17} />}
-          {hasCopied ? 'Copied letter' : 'Copy letter'}
-        </button>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white" onClick={copyLetter}>
+            {hasCopied ? <Check size={17} /> : <Copy size={17} />}
+            {hasCopied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            className="flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 disabled:text-slate-400"
+            disabled={isSaved || !onSave}
+            onClick={onSave}
+          >
+            {isSaved ? 'Saved' : 'Save letter'}
+          </button>
+        </div>
 
         <article className="mt-5 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/70">
           {letter.body.split('\n\n').map((paragraph) => (
@@ -57,6 +69,10 @@ export function LetterSheet({ letter, onClose }: LetterSheetProps) {
                   <p className="mt-2 text-sm leading-5 text-slate-700">{memory.body}</p>
                 </div>
               ))
+            ) : sourceMemoryCount > 0 ? (
+              <p className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
+                This saved letter was generated from {sourceMemoryCount} source {sourceMemoryCount === 1 ? 'memory' : 'memories'}.
+              </p>
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">No memories were available for this letter yet.</p>
             )}

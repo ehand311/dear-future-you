@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js';
-import type { ChildProfile, Memory } from '../types';
+import type { ChildProfile, GeneratedLetter, Memory, SavedLetter } from '../types';
+import { getCurrentMonthLabel } from './letterGenerator';
 import { supabase } from './supabaseClient';
 
 type ChildRow = {
@@ -17,6 +18,17 @@ type MemoryRow = {
   body: string;
   memory_date: string;
   accent: string;
+};
+
+type LetterRow = {
+  id: string;
+  child_id: string | null;
+  title: string;
+  body: string;
+  month: string;
+  source_memory_ids: string[];
+  created_at: string;
+  children?: { name: string } | null;
 };
 
 export async function getCurrentUser() {
@@ -63,12 +75,17 @@ export async function signOut() {
 
 export async function loadUserData(user: User) {
   if (!supabase) {
-    return { children: [], memories: [] };
+    return { children: [], letters: [], memories: [] };
   }
 
-  const [{ data: children, error: childrenError }, { data: memories, error: memoriesError }] = await Promise.all([
+  const [
+    { data: children, error: childrenError },
+    { data: memories, error: memoriesError },
+    { data: letters, error: lettersError },
+  ] = await Promise.all([
     supabase.from('children').select('id,name,age,tone').eq('user_id', user.id).order('created_at', { ascending: true }),
     supabase.from('memories').select('id,child_id,child_name,type,body,memory_date,accent').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('letters').select('id,child_id,title,body,month,source_memory_ids,created_at,children(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
   ]);
 
   if (childrenError) {
@@ -79,8 +96,13 @@ export async function loadUserData(user: User) {
     throw memoriesError;
   }
 
+  if (lettersError) {
+    throw lettersError;
+  }
+
   return {
     children: (children ?? []).map(mapChildRow),
+    letters: (letters ?? []).map(mapLetterRow),
     memories: (memories ?? []).map(mapMemoryRow),
   };
 }
@@ -200,6 +222,31 @@ export async function deleteMemoryById(memoryId: string) {
   }
 }
 
+export async function createLetter(user: User, letter: GeneratedLetter, child?: ChildProfile) {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const { data, error } = await supabase
+    .from('letters')
+    .insert({
+      user_id: user.id,
+      child_id: child?.id ?? null,
+      title: letter.title,
+      body: letter.body,
+      month: getCurrentMonthLabel(),
+      source_memory_ids: letter.sourceMemories.map((memory) => memory.id),
+    })
+    .select('id,child_id,title,body,month,source_memory_ids,created_at,children(name)')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapLetterRow(data);
+}
+
 function mapChildRow(row: ChildRow): ChildProfile {
   return {
     id: row.id,
@@ -217,6 +264,19 @@ function mapMemoryRow(row: MemoryRow): Memory {
     date: formatMemoryDate(row.memory_date),
     body: row.body,
     accent: row.accent,
+  };
+}
+
+function mapLetterRow(row: LetterRow): SavedLetter {
+  return {
+    id: row.id,
+    childName: row.children?.name,
+    title: row.title,
+    body: row.body,
+    month: row.month,
+    createdAt: row.created_at,
+    sourceMemories: [],
+    sourceMemoryIds: row.source_memory_ids,
   };
 }
 

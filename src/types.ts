@@ -28,6 +28,14 @@ export type GeneratedLetter = {
   sourceMemories: Memory[];
 };
 
+export type SavedLetter = GeneratedLetter & {
+  id: string;
+  childName?: string;
+  createdAt: string;
+  month: string;
+  sourceMemoryIds: string[];
+};
+
 export type MemoryFormState = {
   child: string;
   type: string;

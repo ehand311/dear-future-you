@@ -6,6 +6,7 @@ import { generateMonthlyLetter } from '../lib/letterGenerator';
 import { loadStoredChildren, loadStoredMemories, saveStoredChildren, saveStoredMemories } from '../lib/memoryStorage';
 import {
   createChild,
+  createLetter,
   createMemory,
   deleteChild,
   deleteMemoryById,
@@ -18,7 +19,7 @@ import {
   updateMemoriesForChild,
   updateMemory,
 } from '../lib/supabaseRepository';
-import type { ChildProfile, ChildProfileFormState, GeneratedLetter, Memory, MemoryFormState } from '../types';
+import type { ChildProfile, ChildProfileFormState, GeneratedLetter, Memory, MemoryFormState, SavedLetter } from '../types';
 import { AddMemorySheet } from './AddMemorySheet';
 import { AppHeader } from './AppHeader';
 import { AuthPanel } from './AuthPanel';
@@ -27,11 +28,13 @@ import { CaptureSection } from './CaptureSection';
 import { ChildrenStrip } from './ChildrenStrip';
 import { LetterSheet } from './LetterSheet';
 import { MemoryTimeline } from './MemoryTimeline';
+import { SavedLettersSection } from './SavedLettersSection';
 
 export default function AppShell() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [childProfiles, setChildProfiles] = useState(initialChildren);
   const [memories, setMemories] = useState(initialMemories);
+  const [savedLetters, setSavedLetters] = useState<SavedLetter[]>([]);
   const [authError, setAuthError] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -39,7 +42,7 @@ export default function AppShell() {
   const [isChildSheetOpen, setIsChildSheetOpen] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState<GeneratedLetter | null>(null);
   const [isManagingChildren, setIsManagingChildren] = useState(false);
-  const [editingMemoryId, setEditingMemoryId] = useState<number | null>(null);
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hasRestoredData, setHasRestoredData] = useState(false);
@@ -306,6 +309,7 @@ export default function AppShell() {
       const remoteData = await loadUserData(user);
 
       setChildProfiles(remoteData.children);
+      setSavedLetters(remoteData.letters);
       setMemories(remoteData.memories);
       setForm((current) => ({ ...current, child: remoteData.children[0]?.name ?? '' }));
       setHasRestoredData(true);
@@ -362,7 +366,19 @@ export default function AppShell() {
     await signOut();
     setCurrentUser(null);
     setChildProfiles(loadStoredChildren());
+    setSavedLetters([]);
     setMemories(loadStoredMemories());
+  }
+
+  async function saveGeneratedLetter() {
+    if (!currentUser || !generatedLetter) {
+      return;
+    }
+
+    const savedLetter = await createLetter(currentUser, generatedLetter, selectedChild);
+
+    setSavedLetters((current) => [savedLetter, ...current]);
+    setGeneratedLetter(savedLetter);
   }
 
   if (isDataLoading) {
@@ -416,6 +432,7 @@ export default function AppShell() {
           searchQuery={searchQuery}
           selectedChild={selectedChild}
         />
+        <SavedLettersSection letters={savedLetters} onOpenLetter={setGeneratedLetter} />
       </div>
 
       {isSheetOpen && (
@@ -440,7 +457,14 @@ export default function AppShell() {
           onUpdateForm={updateChildForm}
         />
       )}
-      {generatedLetter && <LetterSheet letter={generatedLetter} onClose={() => setGeneratedLetter(null)} />}
+      {generatedLetter && (
+        <LetterSheet
+          isSaved={'id' in generatedLetter}
+          letter={generatedLetter}
+          onClose={() => setGeneratedLetter(null)}
+          onSave={currentUser && !('id' in generatedLetter) ? saveGeneratedLetter : undefined}
+        />
+      )}
     </main>
   );
 }

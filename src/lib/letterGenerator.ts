@@ -1,7 +1,14 @@
 import type { ChildProfile, GeneratedLetter, Memory } from '../types';
 
+export function getCurrentMonthLabel() {
+  return new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function generateMonthlyLetter(memories: Memory[], selectedChild?: ChildProfile): GeneratedLetter {
-  const monthLabel = 'June 2026';
+  const monthLabel = getCurrentMonthLabel();
   const subject = selectedChild?.name ?? 'your family';
   const title = selectedChild ? `${monthLabel} letter to ${selectedChild.name}` : `${monthLabel} family letter`;
   const sortedMemories = [...memories].reverse();
