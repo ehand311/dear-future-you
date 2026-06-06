@@ -91,6 +91,8 @@ function isMemory(value: unknown): value is Memory {
     typeof memory.type === 'string' &&
     typeof memory.date === 'string' &&
     typeof memory.body === 'string' &&
-    typeof memory.accent === 'string'
+    typeof memory.accent === 'string' &&
+    (memory.photoPath === undefined || memory.photoPath === null || typeof memory.photoPath === 'string') &&
+    (memory.photoUrl === undefined || memory.photoUrl === null || typeof memory.photoUrl === 'string')
   );
 }

@@ -18,6 +18,7 @@ type MemoryRow = {
   body: string;
   memory_date: string;
   accent: string;
+  photo_path: string | null;
 };
 
 type LetterRow = {
@@ -84,7 +85,7 @@ export async function loadUserData(user: User) {
     { data: letters, error: lettersError },
   ] = await Promise.all([
     supabase.from('children').select('id,name,age,tone').eq('user_id', user.id).order('created_at', { ascending: true }),
-    supabase.from('memories').select('id,child_id,child_name,type,body,memory_date,accent').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('memories').select('id,child_id,child_name,type,body,memory_date,accent,photo_path').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('letters').select('id,child_id,title,body,month,source_memory_ids,created_at,children(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
   ]);
 
@@ -103,7 +104,7 @@ export async function loadUserData(user: User) {
   return {
     children: (children ?? []).map(mapChildRow),
     letters: (letters ?? []).map(mapLetterRow),
-    memories: (memories ?? []).map(mapMemoryRow),
+    memories: await mapMemoryRows(memories ?? []),
   };
 }
 
@@ -159,14 +160,18 @@ export async function deleteChild(child: ChildProfile) {
   }
 }
 
-export async function createMemory(user: User, memory: Omit<Memory, 'id'>, child?: ChildProfile) {
+export async function createMemory(user: User, memory: Omit<Memory, 'id'> & { photoFile?: File | null }, child?: ChildProfile) {
   if (!supabase) {
     throw new Error('Supabase is not configured.');
   }
 
+  const memoryId = crypto.randomUUID();
+  const photoPath = memory.photoFile ? await uploadMemoryPhoto(user, memoryId, memory.photoFile) : (memory.photoPath ?? null);
+
   const { data, error } = await supabase
     .from('memories')
     .insert({
+      id: memoryId,
       user_id: user.id,
       child_id: child?.id ?? null,
       child_name: memory.child,
@@ -174,21 +179,30 @@ export async function createMemory(user: User, memory: Omit<Memory, 'id'>, child
       body: memory.body,
       memory_date: new Date().toISOString().slice(0, 10),
       accent: memory.accent,
+      photo_path: photoPath,
     })
-    .select('id,child_id,child_name,type,body,memory_date,accent')
+    .select('id,child_id,child_name,type,body,memory_date,accent,photo_path')
     .single();
 
   if (error) {
     throw error;
   }
 
-  return mapMemoryRow(data);
+  return mapMemoryRow(data, await getSignedPhotoUrl(data.photo_path));
 }
 
-export async function updateMemory(memory: Memory, child?: ChildProfile) {
+export async function updateMemory(memory: Memory & { photoFile?: File | null }, child?: ChildProfile) {
   if (!supabase) {
     throw new Error('Supabase is not configured.');
   }
+
+  const user = memory.photoFile ? await getCurrentUser() : null;
+
+  if (memory.photoFile && !user) {
+    throw new Error('Cannot upload photo without a signed-in user.');
+  }
+
+  const photoPath = memory.photoFile && user ? await uploadMemoryPhoto(user, memory.id, memory.photoFile) : (memory.photoPath ?? null);
 
   const { data, error } = await supabase
     .from('memories')
@@ -198,16 +212,17 @@ export async function updateMemory(memory: Memory, child?: ChildProfile) {
       type: memory.type,
       body: memory.body,
       accent: memory.accent,
+      photo_path: photoPath,
     })
     .eq('id', memory.id)
-    .select('id,child_id,child_name,type,body,memory_date,accent')
+    .select('id,child_id,child_name,type,body,memory_date,accent,photo_path')
     .single();
 
   if (error) {
     throw error;
   }
 
-  return mapMemoryRow(data);
+  return mapMemoryRow(data, await getSignedPhotoUrl(data.photo_path));
 }
 
 export async function deleteMemoryById(memoryId: string) {
@@ -256,7 +271,13 @@ function mapChildRow(row: ChildRow): ChildProfile {
   };
 }
 
-function mapMemoryRow(row: MemoryRow): Memory {
+async function mapMemoryRows(rows: MemoryRow[]) {
+  const signedUrls = await Promise.all(rows.map((row) => getSignedPhotoUrl(row.photo_path)));
+
+  return rows.map((row, index) => mapMemoryRow(row, signedUrls[index]));
+}
+
+function mapMemoryRow(row: MemoryRow, photoUrl?: string | null): Memory {
   return {
     id: row.id,
     child: row.child_name,
@@ -264,7 +285,42 @@ function mapMemoryRow(row: MemoryRow): Memory {
     date: formatMemoryDate(row.memory_date),
     body: row.body,
     accent: row.accent,
+    photoPath: row.photo_path,
+    photoUrl,
   };
+}
+
+async function uploadMemoryPhoto(user: User, memoryId: string, file: File) {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const path = `${user.id}/memories/${memoryId}/${Date.now()}.${extension}`;
+  const { error } = await supabase.storage.from('memory-photos').upload(path, file, {
+    cacheControl: '3600',
+    upsert: true,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return path;
+}
+
+async function getSignedPhotoUrl(photoPath?: string | null) {
+  if (!supabase || !photoPath) {
+    return null;
+  }
+
+  const { data, error } = await supabase.storage.from('memory-photos').createSignedUrl(photoPath, 60 * 60);
+
+  if (error) {
+    return null;
+  }
+
+  return data.signedUrl;
 }
 
 function mapLetterRow(row: LetterRow): SavedLetter {

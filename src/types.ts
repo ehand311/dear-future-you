@@ -20,6 +20,8 @@ export type Memory = {
   date: string;
   body: string;
   accent: string;
+  photoPath?: string | null;
+  photoUrl?: string | null;
 };
 
 export type GeneratedLetter = {
@@ -41,6 +43,9 @@ export type MemoryFormState = {
   type: string;
   body: string;
   tags: string;
+  photoFile: File | null;
+  photoPreviewUrl: string;
+  photoPath: string | null;
 };
 
 export type QuickAction = {

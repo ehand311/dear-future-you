@@ -16,8 +16,12 @@ create table if not exists public.memories (
   body text not null,
   memory_date date not null default current_date,
   accent text not null default 'border-slate-200',
+  photo_path text,
   created_at timestamptz not null default now()
 );
+
+alter table public.memories
+  add column if not exists photo_path text;
 
 create table if not exists public.letters (
   id uuid primary key default gen_random_uuid(),
@@ -96,3 +100,32 @@ drop policy if exists "Users can delete own letters" on public.letters;
 create policy "Users can delete own letters"
   on public.letters for delete
   using (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('memory-photos', 'memory-photos', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Users can read own memory photos" on storage.objects;
+create policy "Users can read own memory photos"
+  on storage.objects for select
+  using (bucket_id = 'memory-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can insert own memory photos" on storage.objects;
+create policy "Users can insert own memory photos"
+  on storage.objects for insert
+  with check (bucket_id = 'memory-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can update own memory photos" on storage.objects;
+create policy "Users can update own memory photos"
+  on storage.objects for update
+  using (bucket_id = 'memory-photos' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'memory-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can delete own memory photos" on storage.objects;
+create policy "Users can delete own memory photos"
+  on storage.objects for delete
+  using (bucket_id = 'memory-photos' and (storage.foldername(name))[1] = auth.uid()::text);

@@ -58,6 +58,9 @@ export default function AppShell() {
     child: initialChildren[0].name,
     type: quickActions[0].type,
     body: '',
+    photoFile: null,
+    photoPath: null,
+    photoPreviewUrl: '',
     tags: '',
   });
 
@@ -130,7 +133,7 @@ export default function AppShell() {
     setEditingMemoryId(null);
   }
 
-  function updateForm(field: keyof MemoryFormState, value: string) {
+  function updateForm<Field extends keyof MemoryFormState>(field: Field, value: MemoryFormState[Field]) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -151,12 +154,25 @@ export default function AppShell() {
         date: memories.find((memory) => memory.id === editingMemoryId)?.date ?? 'Today',
         body: form.body.trim(),
         accent: getChildAccent(form.child, childProfiles),
+        photoFile: form.photoFile,
+        photoPath: form.photoPath,
+        photoUrl: form.photoPreviewUrl,
+      };
+      const localMemory = {
+        accent: nextMemory.accent,
+        body: nextMemory.body,
+        child: nextMemory.child,
+        date: nextMemory.date,
+        id: nextMemory.id,
+        photoPath: nextMemory.photoPath,
+        photoUrl: nextMemory.photoUrl,
+        type: nextMemory.type,
       };
       const child = childProfiles.find((profile) => profile.name === form.child);
-      const savedMemory = currentUser ? await updateMemory(nextMemory, child) : nextMemory;
+      const savedMemory = currentUser ? await updateMemory(nextMemory, child) : localMemory;
 
       setMemories((current) => current.map((memory) => (memory.id === editingMemoryId ? savedMemory : memory)));
-      setForm((current) => ({ ...current, body: '', tags: '' }));
+      setForm((current) => ({ ...current, body: '', photoFile: null, photoPath: null, photoPreviewUrl: '', tags: '' }));
       setEditingMemoryId(null);
       setIsSheetOpen(false);
       return;
@@ -168,12 +184,25 @@ export default function AppShell() {
       date: 'Just now',
       body: form.body.trim(),
       accent: getChildAccent(form.child, childProfiles),
+      photoFile: form.photoFile,
+      photoPath: form.photoPath,
+      photoUrl: form.photoPreviewUrl,
+    };
+    const localMemory = {
+      accent: nextMemory.accent,
+      body: nextMemory.body,
+      child: nextMemory.child,
+      date: nextMemory.date,
+      id: Date.now().toString(),
+      photoPath: nextMemory.photoPath,
+      photoUrl: nextMemory.photoUrl,
+      type: nextMemory.type,
     };
     const child = childProfiles.find((profile) => profile.name === form.child);
-    const savedMemory = currentUser ? await createMemory(currentUser, nextMemory, child) : { id: Date.now().toString(), ...nextMemory };
+    const savedMemory = currentUser ? await createMemory(currentUser, nextMemory, child) : localMemory;
 
     setMemories((current) => [savedMemory, ...current]);
-    setForm((current) => ({ ...current, body: '', tags: '' }));
+    setForm((current) => ({ ...current, body: '', photoFile: null, photoPath: null, photoPreviewUrl: '', tags: '' }));
     setIsSheetOpen(false);
   }
 
@@ -183,6 +212,9 @@ export default function AppShell() {
       child: memory.child,
       type: memory.type,
       body: memory.body,
+      photoFile: null,
+      photoPath: memory.photoPath ?? null,
+      photoPreviewUrl: memory.photoUrl ?? '',
       tags: '',
     });
     setIsSheetOpen(true);
@@ -198,7 +230,7 @@ export default function AppShell() {
     }
 
     setMemories((current) => current.filter((memory) => memory.id !== editingMemoryId));
-    setForm((current) => ({ ...current, body: '', tags: '' }));
+    setForm((current) => ({ ...current, body: '', photoFile: null, photoPath: null, photoPreviewUrl: '', tags: '' }));
     setEditingMemoryId(null);
     setIsSheetOpen(false);
   }
@@ -383,9 +415,14 @@ export default function AppShell() {
     }
 
     const savedLetter = await createLetter(currentUser, generatedLetter, selectedChild);
+    const hydratedLetter = hydrateSavedLetter(savedLetter, memories);
 
     setSavedLetters((current) => [savedLetter, ...current]);
-    setGeneratedLetter(savedLetter);
+    setGeneratedLetter(hydratedLetter);
+  }
+
+  function openSavedLetter(letter: SavedLetter) {
+    setGeneratedLetter(hydrateSavedLetter(letter, memories));
   }
 
   if (isDataLoading) {
@@ -440,7 +477,7 @@ export default function AppShell() {
           searchQuery={searchQuery}
           selectedChild={selectedChild}
         />
-        <SavedLettersSection letters={savedLetters} onOpenLetter={setGeneratedLetter} />
+        <SavedLettersSection letters={savedLetters} onOpenLetter={openSavedLetter} />
       </div>
 
       {isSheetOpen && (
@@ -499,4 +536,13 @@ function getChildAccent(childName: string, childProfiles: ChildProfile[]) {
   const toneAccent = child?.tone.split(' ')[0].replace('bg-', 'border-').replace('100', '200');
 
   return childAccent[childName] ?? toneAccent ?? 'border-slate-200';
+}
+
+function hydrateSavedLetter(letter: SavedLetter, memories: Memory[]): SavedLetter {
+  const sourceMemorySet = new Set(letter.sourceMemoryIds);
+
+  return {
+    ...letter,
+    sourceMemories: memories.filter((memory) => sourceMemorySet.has(memory.id)),
+  };
 }

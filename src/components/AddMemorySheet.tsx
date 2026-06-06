@@ -1,4 +1,4 @@
-import { Mic, Square, X } from 'lucide-react';
+import { Image, Mic, Square, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChildProfile, MemoryFormState } from '../types';
 
@@ -40,7 +40,7 @@ type AddMemorySheetProps = {
   onClose: () => void;
   onDelete?: () => void;
   onSave: () => void;
-  onUpdateForm: (field: keyof MemoryFormState, value: string) => void;
+  onUpdateForm: <Field extends keyof MemoryFormState>(field: Field, value: MemoryFormState[Field]) => void;
 };
 
 export function AddMemorySheet({ children, form, isEditing = false, memoryTypes, onClose, onDelete, onSave, onUpdateForm }: AddMemorySheetProps) {
@@ -171,6 +171,48 @@ export function AddMemorySheet({ children, form, isEditing = false, memoryTypes,
               onChange={(event) => onUpdateForm('body', event.target.value)}
             />
           </label>
+
+          <div className="block">
+            <span className="text-sm font-semibold text-slate-700">Photo</span>
+            {form.photoPreviewUrl ? (
+              <div className="mt-2 overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                <img className="aspect-[4/3] w-full object-cover" src={form.photoPreviewUrl} alt="Selected memory attachment" />
+                <button
+                  className="flex h-12 w-full items-center justify-center gap-2 text-sm font-semibold text-rose-700"
+                  type="button"
+                  onClick={() => {
+                    onUpdateForm('photoFile', null);
+                    onUpdateForm('photoPath', null);
+                    onUpdateForm('photoPreviewUrl', '');
+                  }}
+                >
+                  <Trash2 size={17} />
+                  Remove photo
+                </button>
+              </div>
+            ) : (
+              <label className="mt-2 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white p-4 text-center">
+                <Image size={22} className="text-slate-500" />
+                <span className="mt-2 text-sm font-semibold text-slate-700">Attach photo</span>
+                <span className="mt-1 text-xs leading-5 text-slate-500">Choose from your library or camera.</span>
+                <input
+                  accept="image/*"
+                  className="sr-only"
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+
+                    if (!file) {
+                      return;
+                    }
+
+                    onUpdateForm('photoFile', file);
+                    onUpdateForm('photoPreviewUrl', URL.createObjectURL(file));
+                  }}
+                />
+              </label>
+            )}
+          </div>
 
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">Tags</span>

@@ -12,6 +12,7 @@ type LetterSheetProps = {
 export function LetterSheet({ isSaved = false, letter, onClose, onSave }: LetterSheetProps) {
   const [hasCopied, setHasCopied] = useState(false);
   const sourceMemoryCount = 'sourceMemoryIds' in letter ? letter.sourceMemoryIds.length : 0;
+  const photoMemories = letter.sourceMemories.filter((memory) => memory.photoUrl);
 
   async function copyLetter() {
     if (navigator.clipboard) {
@@ -55,6 +56,23 @@ export function LetterSheet({ isSaved = false, letter, onClose, onSave }: Letter
             </p>
           ))}
         </article>
+
+        {photoMemories.length > 0 && (
+          <section className="mt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">Photos from this letter</h3>
+              <p className="text-xs font-semibold text-slate-400">{photoMemories.length} photos</p>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {photoMemories.map((memory) => (
+                <figure key={`${memory.id}-photo`} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm shadow-slate-200/70">
+                  <img className="aspect-square w-full object-cover" src={memory.photoUrl ?? ''} alt={`Photo from ${memory.child}'s memory`} />
+                  <figcaption className="p-2 text-xs font-medium text-slate-500">{memory.child}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-5">
           <h3 className="text-sm font-semibold">Source memories</h3>
