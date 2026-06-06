@@ -47,7 +47,6 @@ export function AddMemorySheet({ children, form, isEditing = false, memoryTypes,
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceMessage, setVoiceMessage] = useState('');
-  const isVoiceNote = form.type === 'Voice note';
 
   useEffect(() => {
     return () => {
@@ -154,22 +153,20 @@ export function AddMemorySheet({ children, form, isEditing = false, memoryTypes,
 
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">What happened?</span>
-            {isVoiceNote && (
-              <div className="mt-2 rounded-3xl border border-slate-200 bg-white p-3">
-                <button
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white"
-                  type="button"
-                  onClick={isListening ? stopVoiceCapture : startVoiceCapture}
-                >
-                  {isListening ? <Square size={17} /> : <Mic size={17} />}
-                  {isListening ? 'Stop voice capture' : 'Start voice capture'}
-                </button>
-                <p className="mt-2 text-xs leading-5 text-slate-500">{voiceMessage || 'Tap start, allow microphone access, and speak your memory.'}</p>
-              </div>
-            )}
+            <div className="mt-2 rounded-3xl border border-slate-200 bg-white p-3">
+              <button
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white"
+                type="button"
+                onClick={isListening ? stopVoiceCapture : startVoiceCapture}
+              >
+                {isListening ? <Square size={17} /> : <Mic size={17} />}
+                {isListening ? 'Stop dictation' : 'Dictate memory'}
+              </button>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{voiceMessage || 'Use voice dictation for any memory type, or type below.'}</p>
+            </div>
             <textarea
               className="mt-2 min-h-32 w-full resize-none rounded-3xl border border-slate-200 bg-white px-4 py-3 text-base leading-6 outline-none focus:border-slate-400"
-              placeholder={isVoiceNote ? 'Your transcript will appear here...' : 'Ellie asked why the moon follows our car...'}
+              placeholder="Ellie asked why the moon follows our car..."
               value={form.body}
               onChange={(event) => onUpdateForm('body', event.target.value)}
             />
