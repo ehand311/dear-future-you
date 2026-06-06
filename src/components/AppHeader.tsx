@@ -1,8 +1,10 @@
 import { ArrowLeft, ChevronRight, Heart, Plus, Sparkles } from 'lucide-react';
 import type { ChildProfile } from '../types';
+import { getCurrentMonthLabel } from '../lib/letterGenerator';
 
 type AppHeaderProps = {
   childMemoryCount: number;
+  isLetterGenerating?: boolean;
   onAddMemory: () => void;
   onBack: () => void;
   onGenerateLetter: () => void;
@@ -12,7 +14,9 @@ type AppHeaderProps = {
   userEmail?: string;
 };
 
-export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLetter, onSignOut, savedThisMonth, selectedChild, userEmail }: AppHeaderProps) {
+export function AppHeader({ childMemoryCount, isLetterGenerating = false, onAddMemory, onBack, onGenerateLetter, onSignOut, savedThisMonth, selectedChild, userEmail }: AppHeaderProps) {
+  const monthLabel = getCurrentMonthLabel();
+
   return (
     <header className="px-5 pb-4 pt-5">
       <div className="flex items-center justify-between">
@@ -55,10 +59,14 @@ export function AppHeader({ childMemoryCount, onAddMemory, onBack, onGenerateLet
           </div>
           <Heart className="mt-1 text-rose-300" size={26} />
         </div>
-        <button className="mt-5 flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left text-slate-950" onClick={onGenerateLetter}>
+        <button
+          className="mt-5 flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left text-slate-950 disabled:cursor-wait disabled:text-slate-400"
+          disabled={isLetterGenerating}
+          onClick={onGenerateLetter}
+        >
           <span className="flex items-center gap-3 text-sm font-semibold">
             <Sparkles size={18} className="text-violet-600" />
-            Generate June letter
+            {isLetterGenerating ? 'Writing letter...' : `Generate ${monthLabel} letter`}
           </span>
           <ChevronRight size={18} />
         </button>

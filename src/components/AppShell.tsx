@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { childAccent, children as initialChildren, initialMemories, memoryTypes } from '../data/mockMemories';
 import { quickActions } from '../data/quickActions';
-import { generateMonthlyLetter } from '../lib/letterGenerator';
+import { generateAiMonthlyLetter } from '../lib/aiLetterGenerator';
 import { loadStoredChildren, loadStoredMemories, saveStoredChildren, saveStoredMemories } from '../lib/memoryStorage';
 import {
   createChild,
@@ -40,6 +40,7 @@ export default function AppShell() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isChildSheetOpen, setIsChildSheetOpen] = useState(false);
+  const [isLetterGenerating, setIsLetterGenerating] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState<GeneratedLetter | null>(null);
   const [isManagingChildren, setIsManagingChildren] = useState(false);
   const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
@@ -295,10 +296,16 @@ export default function AppShell() {
     setIsManagingChildren(false);
   }
 
-  function openMonthlyLetter() {
+  async function openMonthlyLetter() {
     const letterMemories = activeChild ? memories.filter((memory) => memory.child === activeChild) : memories;
 
-    setGeneratedLetter(generateMonthlyLetter(letterMemories, selectedChild));
+    setIsLetterGenerating(true);
+
+    try {
+      setGeneratedLetter(await generateAiMonthlyLetter(letterMemories, selectedChild));
+    } finally {
+      setIsLetterGenerating(false);
+    }
   }
 
   async function loadRemoteData(user: User) {
@@ -398,6 +405,7 @@ export default function AppShell() {
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#fffdf8] shadow-2xl shadow-slate-200/70">
         <AppHeader
           childMemoryCount={childMemoryCount}
+          isLetterGenerating={isLetterGenerating}
           onAddMemory={() => openSheet('Memory', activeChild ?? form.child)}
           onBack={returnHome}
           onGenerateLetter={openMonthlyLetter}
